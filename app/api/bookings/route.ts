@@ -104,7 +104,24 @@ export async function POST(request: Request) {
     },
   ]);
 
+  console.log("INSERT ERROR OBJECT:", insertError);
+
   if (insertError) {
+    const isDuplicateBookingError =
+      insertError.code === "23505" ||
+      insertError.message?.includes("23505") ||
+      insertError.details?.includes("23505") ||
+      insertError.hint?.includes("23505") ||
+      insertError.message?.includes("unique_member_class_date_confirmada") ||
+      insertError.details?.includes("unique_member_class_date_confirmada");
+
+    if (isDuplicateBookingError) {
+      return NextResponse.json(
+        { error: "Ya tiene una clase reservada en este día y horario" },
+        { status: 409 },
+      );
+    }
+
     console.error("Error al crear reserva:", insertError);
     return NextResponse.json(
       { error: "Ocurrió un error, intentá de nuevo." },
