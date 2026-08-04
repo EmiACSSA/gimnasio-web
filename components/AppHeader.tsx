@@ -9,9 +9,21 @@ export default async function AppHeader() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  let isAdmin = false;
+
+  if (user) {
+    const { data: member } = await supabase
+      .from("members")
+      .select("role")
+      .eq("auth_id", user.id)
+      .maybeSingle();
+
+    isAdmin = member?.role === "administrador";
+  }
+
   return (
     <header className="border-b border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)]">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 gap-3">
         <Link href="/" className="flex items-center">
           <Image
             src="/logo.png"
@@ -23,7 +35,15 @@ export default async function AppHeader() {
         </Link>
 
         {user ? (
-          <div className="flex items-center gap-3 text-sm text-[var(--text-secondary)]">
+          <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-[var(--text-secondary)]">
+            <Link href="/mis-reservas" className="transition hover:text-[var(--text-primary)]">
+              Mis reservas
+            </Link>
+            {isAdmin ? (
+              <Link href="/admin" className="transition hover:text-[var(--text-primary)]">
+                Admin
+              </Link>
+            ) : null}
             <span className="font-[family-name:var(--font-sans)]">{user.email}</span>
             <LogoutButton />
           </div>

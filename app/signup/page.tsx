@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { translateAuthError } from "@/lib/auth-errors";
 
 const supabase = createClient();
 
@@ -31,7 +32,7 @@ export default function SignupPage() {
     });
 
     if (error) {
-      setMessage(error.message);
+      setMessage(translateAuthError(error.message));
     } else if (data.user?.identities?.length === 0) {
       setMessage("Este usuario ya existe o no pudo confirmarse.");
     } else {

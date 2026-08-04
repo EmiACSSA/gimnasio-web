@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { translateAuthError } from "@/lib/auth-errors";
 
 const supabase = createClient();
 
@@ -23,7 +24,7 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setMessage(error.message);
+      setMessage(translateAuthError(error.message));
     } else {
       setMessage("Sesión iniciada correctamente.");
     }

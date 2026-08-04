@@ -29,15 +29,45 @@ export async function PATCH(
     );
   }
 
-  const { data: adminMember, error: adminMemberError } = await supabase
+  const { data: currentMember, error: currentMemberError } = await supabase
     .from("members")
-    .select("role")
+    .select("id, role")
     .eq("auth_id", user.id)
     .maybeSingle();
 
-  if (adminMemberError || !adminMember || adminMember.role !== "administrador") {
+  if (currentMemberError || !currentMember) {
+    return NextResponse.json(
+      { error: "No se pudo verificar tu perfil de socio." },
+      { status: 403 },
+    );
+  }
+
+  const { data: booking, error: bookingError } = await supabase
+    .from("bookings")
+    .select("member_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (bookingError || !booking) {
+    return NextResponse.json(
+      { error: "No se encontró la reserva indicada." },
+      { status: 404 },
+    );
+  }
+
+  const isAdmin = currentMember.role === "administrador";
+  const isOwner = booking.member_id === currentMember.id;
+
+  if (!isAdmin && !isOwner) {
     return NextResponse.json(
       { error: "No tienes permisos para modificar reservas." },
+      { status: 403 },
+    );
+  }
+
+  if (!isAdmin && status !== "cancelada") {
+    return NextResponse.json(
+      { error: "Solo podés cancelar tu propia reserva." },
       { status: 403 },
     );
   }
