@@ -90,53 +90,57 @@ export default async function ClasesPage() {
           <p className="text-sm text-[var(--text-secondary)]">Usuario autenticado: {user.email}</p>
         </div>
 
-        {Object.keys(grouped).map((dayKey) => {
-          const dayNumber = Number(dayKey);
+        {dayLabels.map((label, dayNumber) => {
           const classesForDay = grouped[dayNumber] ?? [];
 
           return (
-            <section key={dayKey} className="mb-8">
+            <section key={label} className="mb-8">
               <h2 className="mb-4 text-lg font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em] text-[var(--text-primary)]">
-                {dayLabels[dayNumber]}
+                {label}
               </h2>
 
-              <div className="grid gap-4">
-                {classesForDay.map((item) => (
-                  <article
-                    key={item.id}
-                    className="rounded-[2px] border border-[var(--border)] bg-[var(--surface)] p-4"
-                  >
-                    <div className="border-l-4 border-[var(--accent)] pl-4">
-                      <p className="text-lg font-semibold text-[var(--text-primary)]">{item.name}</p>
-                      <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                        Horario: {item.start_time} · Duración: {item.duration_minutes} min
-                      </p>
-                      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="font-[family-name:var(--font-jetbrains-mono)] text-2xl font-bold text-[var(--accent)]">
-                            {item.available ?? "No disponible"}
-                          </p>
-                          <p className="text-xs uppercase tracking-wide text-[var(--text-secondary)]">
-                            Cupo disponible
-                          </p>
+              {classesForDay.length === 0 ? (
+                <p className="text-sm text-[var(--text-secondary)]">No hay clases programadas este día.</p>
+              ) : (
+                <div className="grid gap-4">
+                  {classesForDay.map((item) => (
+                    <article
+                      key={item.id}
+                      className="rounded-[2px] border border-[var(--border)] bg-[var(--surface)] p-4"
+                    >
+                      <div className="border-l-4 border-[var(--accent)] pl-4">
+                        <p className="text-lg font-semibold text-[var(--text-primary)]">{item.name}</p>
+                        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                          Horario: {item.start_time} · Duración: {item.duration_minutes} min
+                        </p>
+                        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="font-[family-name:var(--font-jetbrains-mono)] text-2xl font-bold text-[var(--accent)]">
+                              {item.available ?? "No disponible"}
+                            </p>
+                            <p className="text-xs uppercase tracking-wide text-[var(--text-secondary)]">
+                              Cupo disponible
+                            </p>
+                          </div>
+
+                          <ReserveClassButton
+                            classId={item.id}
+                            className={item.name}
+                            bookingDate={item.bookingDate}
+                            available={item.available ?? 0}
+                          />
                         </div>
 
-                        <ReserveClassButton
-                          classId={item.id}
-                          className={item.name}
-                          bookingDate={item.bookingDate}
-                        />
+                        {item.availabilityError ? (
+                          <p className="mt-3 text-sm text-[var(--text-secondary)]">
+                            Error al calcular cupo: {item.availabilityError}
+                          </p>
+                        ) : null}
                       </div>
-
-                      {item.availabilityError ? (
-                        <p className="mt-3 text-sm text-[var(--text-secondary)]">
-                          Error al calcular cupo: {item.availabilityError}
-                        </p>
-                      ) : null}
-                    </div>
-                  </article>
-                ))}
-              </div>
+                    </article>
+                  ))}
+                </div>
+              )}
             </section>
           );
         })}

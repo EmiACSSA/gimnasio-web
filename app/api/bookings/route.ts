@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
   const { data: classInfo, error: classError } = await supabase
     .from("classes")
-    .select("capacity")
+    .select("capacity, day_of_week")
     .eq("id", classId)
     .maybeSingle();
 
@@ -68,6 +68,26 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "La clase seleccionada no existe." },
       { status: 404 },
+    );
+  }
+
+  const bookingDateObject = new Date(`${bookingDate}T00:00:00`);
+  const bookingDay = bookingDateObject.getDay();
+
+  if (bookingDay !== classInfo.day_of_week) {
+    return NextResponse.json(
+      { error: "La fecha elegida no corresponde al día de esta clase." },
+      { status: 400 },
+    );
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (bookingDateObject < today) {
+    return NextResponse.json(
+      { error: "No se puede reservar una fecha pasada." },
+      { status: 400 },
     );
   }
 

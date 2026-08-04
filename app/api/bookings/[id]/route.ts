@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { enforceRateLimit } from "@/lib/booking-security";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
+const classCancellationWindows: Record<string, number> = {
+  Funcional: 10,
+};
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -65,7 +69,7 @@ export async function PATCH(
 
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
-    .select("member_id")
+    .select("member_id, class_id, booking_date, classes(name, start_time)")
     .eq("id", id)
     .maybeSingle();
 
@@ -76,6 +80,7 @@ export async function PATCH(
     );
   }
 
+  const classInfo = booking.classes as { name?: string; start_time?: string } | null;
   const isAdmin = currentMember.role === "administrador";
   const isOwner = booking.member_id === currentMember.id;
 
@@ -91,6 +96,22 @@ export async function PATCH(
       { error: "Solo podés cancelar tu propia reserva." },
       { status: 403 },
     );
+  }
+
+  if (!isAdmin && status === "cancelada" && classInfo?.name === "Funcional") {
+    const cancellationWindow = classCancellationWindows[classInfo.name] ?? 0;
+    if (cancellationWindow > 0 && classInfo.start_time) {
+      const reservationDateTime = new Date(`${booking.booking_date}T${classInfo.start_time}:00`);
+      const now = new Date();
+      const diffInMinutes = Math.floor((reservationDateTime.getTime() - now.getTime()) / 60000);
+
+      if (diffInMinutes < cancellationWindow && diffInMinutes >= 0) {
+        return NextResponse.json(
+          { error: "No podés cancelar esta reserva, faltan menos de 10 minutos para la clase." },
+          { status: 400 },
+        );
+      }
+    }
   }
 
   const { data: updateData, error: updateError } = await supabase

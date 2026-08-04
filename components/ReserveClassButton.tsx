@@ -6,12 +6,14 @@ type ReserveClassButtonProps = {
   classId: number;
   className: string;
   bookingDate: string;
+  available?: number;
 };
 
 export default function ReserveClassButton({
   classId,
   className,
   bookingDate,
+  available = 0,
 }: ReserveClassButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(bookingDate);
@@ -45,14 +47,21 @@ export default function ReserveClassButton({
     setIsSubmitting(false);
   }
 
+  const isOutOfStock = (available ?? 0) <= 0;
+
   return (
     <div className="w-full max-w-xs">
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="bg-[var(--accent)] px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-[#c5312b]"
+        disabled={isOutOfStock}
+        className={`px-4 py-2 text-sm font-bold uppercase tracking-wide transition ${
+          isOutOfStock
+            ? "cursor-not-allowed border border-[var(--border)] bg-[var(--border)] text-[var(--text-secondary)]"
+            : "bg-[var(--accent)] text-white hover:bg-[#c5312b]"
+        }`}
       >
-        Reservar
+        {isOutOfStock ? "Sin cupo" : "Reservar"}
       </button>
 
       {isOpen ? (
