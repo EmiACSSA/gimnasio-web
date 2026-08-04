@@ -47,7 +47,7 @@ export default async function Home() {
                 href="/clases"
                 className="inline-flex min-w-[180px] items-center justify-center bg-[var(--accent)] px-5 py-3 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-[#c5312b]"
               >
-                Ver mis clases
+                Reservar una clase
               </Link>
             </div>
           </div>

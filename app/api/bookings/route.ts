@@ -1,16 +1,25 @@
 import { NextResponse } from "next/server";
+import { enforceRateLimit, isValidBookingDate, isValidClassId } from "@/lib/booking-security";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const { classId, bookingDate } = body as {
-    classId?: number;
-    bookingDate?: string;
-  };
+  let body: unknown;
 
-  if (!classId || !bookingDate) {
+  try {
+    body = await request.json();
+  } catch {
     return NextResponse.json(
-      { error: "Faltan datos para crear la reserva." },
+      { error: "Datos inválidos para crear la reserva." },
+      { status: 400 },
+    );
+  }
+
+  const payload = body as { classId?: unknown; bookingDate?: string };
+  const { classId, bookingDate } = payload;
+
+  if (!isValidClassId(classId) || !isValidBookingDate(bookingDate)) {
+    return NextResponse.json(
+      { error: "Datos inválidos para crear la reserva." },
       { status: 400 },
     );
   }
@@ -21,13 +30,18 @@ export async function POST(request: Request) {
     error: userError,
   } = await supabase.auth.getUser();
 
-  console.log("USER ID DESDE ROUTE HANDLER:", user?.id);
-  console.log("USER ERROR:", userError);
-
   if (userError || !user) {
     return NextResponse.json(
       { error: "Debes iniciar sesión para reservar una clase." },
       { status: 401 },
+    );
+  }
+
+  const rateLimit = await enforceRateLimit(request, user.id, { limit: 10, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Intentá de nuevo más tarde." },
+      { status: 429 },
     );
   }
 
@@ -36,9 +50,6 @@ export async function POST(request: Request) {
     .select("id")
     .eq("auth_id", user.id)
     .maybeSingle();
-
-  console.log("MEMBER RESULT:", member);
-  console.log("MEMBER ERROR:", memberError);
 
   if (memberError || !member) {
     return NextResponse.json(
@@ -68,8 +79,9 @@ export async function POST(request: Request) {
     .eq("status", "confirmada");
 
   if (countError) {
+    console.error("Error al validar cupo disponible:", countError);
     return NextResponse.json(
-      { error: "No se pudo validar el cupo disponible." },
+      { error: "Ocurrió un error, intentá de nuevo." },
       { status: 500 },
     );
   }
@@ -93,8 +105,9 @@ export async function POST(request: Request) {
   ]);
 
   if (insertError) {
+    console.error("Error al crear reserva:", insertError);
     return NextResponse.json(
-      { error: insertError.message },
+      { error: "Ocurrió un error, intentá de nuevo." },
       { status: 500 },
     );
   }

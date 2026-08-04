@@ -12,3 +12,15 @@ export function translateAuthError(message?: string | null) {
 
   return authErrorMessages[message] ?? "Ocurrió un error. Intentá de nuevo.";
 }
+
+export function sanitizeFullName(value: string) {
+  return value.trim().replace(/[<>]/g, "").replace(/<script|script>/gi, "").replace(/javascript:/gi, "").replace(/on\w+=/gi, "");
+}
+
+export function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+export function isValidPhone(value: string) {
+  return /^[0-9+()\-\s]{7,20}$/.test(value.trim());
+}

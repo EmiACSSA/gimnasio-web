@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { translateAuthError } from "@/lib/auth-errors";
+import { isValidEmail, isValidPhone, sanitizeFullName, translateAuthError } from "@/lib/auth-errors";
 
 const supabase = createClient();
 
@@ -20,13 +20,34 @@ export default function SignupPage() {
     setIsSubmitting(true);
     setMessage("");
 
+    const cleanedFullName = sanitizeFullName(fullName);
+    const cleanedPhone = phone.trim().replace(/[<>]/g, "");
+
+    if (!cleanedFullName || cleanedFullName.length < 2) {
+      setMessage("Ingresá un nombre válido.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setMessage("Ingresá un email válido.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!isValidPhone(cleanedPhone)) {
+      setMessage("Ingresá un teléfono válido.");
+      setIsSubmitting(false);
+      return;
+    }
+
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: email.trim().toLowerCase(),
       password,
       options: {
         data: {
-          full_name: fullName,
-          phone,
+          full_name: cleanedFullName,
+          phone: cleanedPhone,
         },
       },
     });

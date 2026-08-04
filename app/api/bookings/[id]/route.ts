@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { enforceRateLimit } from "@/lib/booking-security";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function PATCH(
@@ -6,8 +7,20 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const body = await request.json();
-  const status = body.status as "cancelada" | "asistio";
+
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Datos inválidos para actualizar la reserva." },
+      { status: 400 },
+    );
+  }
+
+  const payload = body as { status?: string };
+  const status = payload.status;
 
   if (!status || !["cancelada", "asistio"].includes(status)) {
     return NextResponse.json(
@@ -26,6 +39,14 @@ export async function PATCH(
     return NextResponse.json(
       { error: "Debes iniciar sesión para realizar esta acción." },
       { status: 401 },
+    );
+  }
+
+  const rateLimit = await enforceRateLimit(request, user.id, { limit: 20, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Intentá de nuevo más tarde." },
+      { status: 429 },
     );
   }
 
@@ -72,14 +93,19 @@ export async function PATCH(
     );
   }
 
-  const { error: updateError } = await supabase
+  const { data: updateData, error: updateError } = await supabase
     .from("bookings")
     .update({ status })
-    .eq("id", id);
+    .eq("id", id)
+    .select();
+
+  console.log("UPDATE RESULT DATA:", updateData);
+  console.log("UPDATE RESULT ERROR:", updateError);
 
   if (updateError) {
+    console.error("Error al actualizar reserva:", updateError);
     return NextResponse.json(
-      { error: updateError.message },
+      { error: "Ocurrió un error, intentá de nuevo." },
       { status: 500 },
     );
   }
