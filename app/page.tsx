@@ -15,7 +15,7 @@ export default function Home() {
         </div>
 
         <h1 className="mb-8 text-3xl font-[family-name:var(--font-poppins)] uppercase tracking-[0.18em] text-[var(--text-primary)] sm:text-4xl">
-          Mi Gimnasio
+          Bienvenido a la comunidad
         </h1>
 
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
