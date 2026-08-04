@@ -46,34 +46,39 @@ export default function ReserveClassButton({
   }
 
   return (
-    <div style={{ marginTop: 12 }}>
-      <button type="button" onClick={() => setIsOpen((current) => !current)}>
+    <div className="w-full max-w-xs">
+      <button
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        className="bg-[var(--accent)] px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-[#c5312b]"
+      >
         Reservar
       </button>
 
       {isOpen ? (
-        <div style={{ marginTop: 12 }}>
-          <label htmlFor={`date-${classId}`}>Fecha</label>
-          <br />
+        <div className="mt-3 rounded-[2px] border border-[var(--border)] bg-[var(--background)] p-3">
+          <label htmlFor={`date-${classId}`} className="mb-2 block text-sm text-[var(--text-secondary)]">
+            Fecha
+          </label>
           <input
             id={`date-${classId}`}
             type="date"
             value={selectedDate}
             onChange={(event) => setSelectedDate(event.target.value)}
+            className="w-full rounded-[2px] px-3 py-2"
           />
-          <br />
           <button
             type="button"
             onClick={handleReserve}
             disabled={isSubmitting}
-            style={{ marginTop: 8 }}
+            className="mt-3 w-full bg-[var(--accent)] px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-[#c5312b] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSubmitting ? "Confirmando..." : "Confirmar reserva"}
           </button>
         </div>
       ) : null}
 
-      {message ? <p>{message}</p> : null}
+      {message ? <p className="mt-3 text-sm text-[var(--text-secondary)]">{message}</p> : null}
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 type BookingStatusActionsProps = {
-  bookingId: number;
+  bookingId: string;
   currentStatus: string;
 };
 
@@ -38,13 +38,13 @@ export default function BookingStatusActions({
   }
 
   return (
-    <div>
+    <div className="space-y-2">
       {currentStatus !== "cancelada" ? (
         <button
           type="button"
           onClick={() => updateStatus("cancelada")}
           disabled={isSubmitting}
-          style={{ marginRight: 8 }}
+          className="border border-[var(--border)] bg-transparent px-3 py-1 text-xs font-bold uppercase tracking-wide text-[var(--text-primary)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
         >
           Cancelar
         </button>
@@ -55,12 +55,13 @@ export default function BookingStatusActions({
           type="button"
           onClick={() => updateStatus("asistio")}
           disabled={isSubmitting}
+          className="border border-[var(--border)] bg-transparent px-3 py-1 text-xs font-bold uppercase tracking-wide text-[var(--text-primary)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
         >
           Marcar asistencia
         </button>
       ) : null}
 
-      {message ? <p>{message}</p> : null}
+      {message ? <p className="text-xs text-[var(--text-secondary)]">{message}</p> : null}
     </div>
   );
 }

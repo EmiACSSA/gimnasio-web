@@ -41,9 +41,13 @@ export default async function ClasesPage() {
 
   if (classesError) {
     return (
-      <main style={{ padding: 24 }}>
-        <h1>Clases</h1>
-        <p>Error al cargar las clases: {classesError.message}</p>
+      <main className="px-4 py-8">
+        <div className="mx-auto max-w-4xl rounded-[2px] border border-[var(--border)] bg-[var(--surface)] p-6">
+          <h1 className="text-2xl font-[family-name:var(--font-poppins)] uppercase tracking-[0.16em] text-[var(--text-primary)]">
+            Clases
+          </h1>
+          <p className="mt-3 text-[var(--text-secondary)]">Error al cargar las clases: {classesError.message}</p>
+        </div>
       </main>
     );
   }
@@ -61,9 +65,7 @@ export default async function ClasesPage() {
       return {
         ...item,
         bookingDate,
-        available: bookingsError
-          ? null
-          : Math.max(item.capacity - (count ?? 0), 0),
+        available: bookingsError ? null : Math.max(item.capacity - (count ?? 0), 0),
         availabilityError: bookingsError?.message ?? null,
       };
     }),
@@ -79,45 +81,66 @@ export default async function ClasesPage() {
   );
 
   return (
-    <main style={{ padding: 24 }}>
-      <h1>Clases</h1>
-      <p>Usuario autenticado: {user.email}</p>
+    <main className="px-4 py-8">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-2xl font-[family-name:var(--font-poppins)] uppercase tracking-[0.16em] text-[var(--text-primary)]">
+            Clases
+          </h1>
+          <p className="text-sm text-[var(--text-secondary)]">Usuario autenticado: {user.email}</p>
+        </div>
 
-      {Object.keys(grouped).map((dayKey) => {
-        const dayNumber = Number(dayKey);
-        const classesForDay = grouped[dayNumber] ?? [];
+        {Object.keys(grouped).map((dayKey) => {
+          const dayNumber = Number(dayKey);
+          const classesForDay = grouped[dayNumber] ?? [];
 
-        return (
-          <section key={dayKey} style={{ marginTop: 24 }}>
-            <h2>{dayLabels[dayNumber]}</h2>
+          return (
+            <section key={dayKey} className="mb-8">
+              <h2 className="mb-4 text-lg font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em] text-[var(--text-primary)]">
+                {dayLabels[dayNumber]}
+              </h2>
 
-            {classesForDay.map((item) => (
-              <div
-                key={item.id}
-                style={{ marginTop: 12, border: "1px solid #ccc", padding: 12 }}
-              >
-                <p>
-                  <strong>{item.name}</strong>
-                </p>
-                <p>
-                  Horario: {item.start_time} · Duración: {item.duration_minutes} min
-                </p>
-                <p>
-                  Cupo disponible: {item.available ?? "No disponible"}
-                </p>
-                {item.availabilityError ? (
-                  <p>Error al calcular cupo: {item.availabilityError}</p>
-                ) : null}
-                <ReserveClassButton
-                  classId={item.id}
-                  className={item.name}
-                  bookingDate={item.bookingDate}
-                />
+              <div className="grid gap-4">
+                {classesForDay.map((item) => (
+                  <article
+                    key={item.id}
+                    className="rounded-[2px] border border-[var(--border)] bg-[var(--surface)] p-4"
+                  >
+                    <div className="border-l-4 border-[var(--accent)] pl-4">
+                      <p className="text-lg font-semibold text-[var(--text-primary)]">{item.name}</p>
+                      <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                        Horario: {item.start_time} · Duración: {item.duration_minutes} min
+                      </p>
+                      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="font-[family-name:var(--font-jetbrains-mono)] text-2xl font-bold text-[var(--accent)]">
+                            {item.available ?? "No disponible"}
+                          </p>
+                          <p className="text-xs uppercase tracking-wide text-[var(--text-secondary)]">
+                            Cupo disponible
+                          </p>
+                        </div>
+
+                        <ReserveClassButton
+                          classId={item.id}
+                          className={item.name}
+                          bookingDate={item.bookingDate}
+                        />
+                      </div>
+
+                      {item.availabilityError ? (
+                        <p className="mt-3 text-sm text-[var(--text-secondary)]">
+                          Error al calcular cupo: {item.availabilityError}
+                        </p>
+                      ) : null}
+                    </div>
+                  </article>
+                ))}
               </div>
-            ))}
-          </section>
-        );
-      })}
+            </section>
+          );
+        })}
+      </div>
     </main>
   );
 }
