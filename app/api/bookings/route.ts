@@ -64,6 +64,28 @@ export async function POST(request: Request) {
     .eq("id", classId)
     .maybeSingle();
 
+  const { data: classException, error: classExceptionError } = await supabase
+    .from("class_exceptions")
+    .select("id")
+    .eq("class_id", classId)
+    .eq("exception_date", bookingDate)
+    .maybeSingle();
+
+  if (classExceptionError) {
+    console.error("Error al validar excepción de clase:", classExceptionError);
+    return NextResponse.json(
+      { error: "Ocurrió un error, intentá de nuevo." },
+      { status: 500 },
+    );
+  }
+
+  if (classException) {
+    return NextResponse.json(
+      { error: "Esta clase no tiene sesión en la fecha elegida." },
+      { status: 400 },
+    );
+  }
+
   if (classError || !classInfo) {
     return NextResponse.json(
       { error: "La clase seleccionada no existe." },

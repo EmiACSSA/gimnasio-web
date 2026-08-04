@@ -15,10 +15,12 @@ const dayLabels = [
 function getNextDateForDay(dayOfWeek: number) {
   const today = new Date();
   const currentDay = today.getDay();
-  const offset = (dayOfWeek - currentDay + 7) % 7;
   const nextDate = new Date(today);
-  nextDate.setDate(today.getDate() + (offset === 0 ? 7 : offset));
   nextDate.setHours(0, 0, 0, 0);
+
+  const offset = (dayOfWeek - currentDay + 7) % 7;
+  nextDate.setDate(today.getDate() + (offset === 0 ? 0 : offset));
+
   return nextDate.toISOString().slice(0, 10);
 }
 
@@ -39,18 +41,26 @@ export default async function ClasesPage() {
     .order("day_of_week", { ascending: true })
     .order("start_time", { ascending: true });
 
-  if (classesError) {
+  const { data: classExceptions, error: classExceptionsError } = await supabase
+    .from("class_exceptions")
+    .select("class_id, exception_date");
+
+  if (classesError || classExceptionsError) {
     return (
       <main className="px-4 py-8">
         <div className="mx-auto max-w-4xl rounded-[2px] border border-[var(--border)] bg-[var(--surface)] p-6">
           <h1 className="text-2xl font-[family-name:var(--font-poppins)] uppercase tracking-[0.16em] text-[var(--text-primary)]">
             Clases
           </h1>
-          <p className="mt-3 text-[var(--text-secondary)]">Error al cargar las clases: {classesError.message}</p>
+          <p className="mt-3 text-[var(--text-secondary)]">Error al cargar las clases: {classesError?.message ?? classExceptionsError?.message ?? "No se pudo cargar el listado."}</p>
         </div>
       </main>
     );
   }
+
+  const exceptionKeys = new Set(
+    (classExceptions ?? []).map((item) => `${item.class_id}:${item.exception_date}`),
+  );
 
   const classesWithAvailability = await Promise.all(
     (classes ?? []).map(async (item) => {
@@ -62,16 +72,27 @@ export default async function ClasesPage() {
         .eq("booking_date", bookingDate)
         .eq("status", "confirmada");
 
+      const startDateTime = new Date(`${bookingDate}T${item.start_time}:00`);
+      const now = new Date();
+      const minutesUntilStart = Math.floor((startDateTime.getTime() - now.getTime()) / 60000);
+      const isTodayOccurrence = bookingDate === now.toISOString().slice(0, 10);
+      const shouldHideToday = isTodayOccurrence && minutesUntilStart <= 10;
+      const hasException = exceptionKeys.has(`${item.id}:${bookingDate}`);
+
       return {
         ...item,
         bookingDate,
         available: bookingsError ? null : Math.max(item.capacity - (count ?? 0), 0),
         availabilityError: bookingsError?.message ?? null,
+        shouldHideToday,
+        hasException,
       };
     }),
   );
 
-  const grouped = classesWithAvailability.reduce<Record<number, typeof classesWithAvailability>>(
+  const visibleClasses = classesWithAvailability.filter((item) => !item.shouldHideToday && !item.hasException);
+
+  const grouped = visibleClasses.reduce<Record<number, typeof visibleClasses>>(
     (acc, item) => {
       acc[item.day_of_week] = acc[item.day_of_week] ?? [];
       acc[item.day_of_week].push(item);

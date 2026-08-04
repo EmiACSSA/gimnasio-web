@@ -1,29 +1,8 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import BookingStatusActions from "@/components/BookingStatusActions";
+import AdminPanelNav from "@/components/AdminPanelNav";
 
-const dayLabels = [
-  "Domingo",
-  "Lunes",
-  "Martes",
-  "Miércoles",
-  "Jueves",
-  "Viernes",
-  "Sábado",
-];
-
-type AdminPageProps = {
-  searchParams?: Promise<{
-    date?: string;
-    status?: string;
-  }>;
-};
-
-export default async function AdminPage({ searchParams }: AdminPageProps) {
-  const resolvedSearchParams = (await searchParams) ?? {};
-  const selectedDate = resolvedSearchParams.date ?? "";
-  const selectedStatus = resolvedSearchParams.status ?? "todas";
-
+export default async function AdminPage() {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -44,157 +23,117 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     redirect("/clases");
   }
 
-  const { data: bookings, error: bookingsError } = await supabase
-    .from("bookings")
-    .select(
-      "id, booking_date, status, created_at, members(full_name, phone), classes(name, day_of_week, start_time)",
-    )
-    .order("booking_date", { ascending: false })
-    .order("created_at", { ascending: false });
+  const today = new Date().toISOString().slice(0, 10);
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thirtyDaysAgoString = thirtyDaysAgo.toISOString().slice(0, 10);
 
-  if (bookingsError) {
-    return (
-      <main className="px-4 py-8">
-        <div className="mx-auto max-w-5xl rounded-[2px] border border-[var(--border)] bg-[var(--surface)] p-6">
-          <h1 className="text-2xl font-[family-name:var(--font-poppins)] uppercase tracking-[0.16em] text-[var(--text-primary)]">
-            Administración
-          </h1>
-          <p className="mt-3 text-[var(--text-secondary)]">Error al cargar las reservas: {bookingsError.message}</p>
-        </div>
-      </main>
-    );
+  const { data: todayBookings, error: todayBookingsError } = await supabase
+    .from("bookings")
+    .select("id, class_id, classes(name)")
+    .eq("booking_date", today)
+    .eq("status", "confirmada");
+
+  if (todayBookingsError) {
+    throw todayBookingsError;
   }
 
-  const filteredBookings = (bookings ?? []).filter((booking) => {
-    const matchesDate = selectedDate ? booking.booking_date === selectedDate : true;
-    const matchesStatus = selectedStatus === "todas" ? true : booking.status === selectedStatus;
+  const { count: activeMembersCount, error: activeMembersError } = await supabase
+    .from("members")
+    .select("id", { count: "exact", head: true })
+    .eq("role", "socio");
 
-    return matchesDate && matchesStatus;
-  });
+  if (activeMembersError) {
+    throw activeMembersError;
+  }
+
+  const { data: popularBookings, error: popularBookingsError } = await supabase
+    .from("bookings")
+    .select("class_id, classes(name)")
+    .eq("status", "confirmada")
+    .gte("booking_date", thirtyDaysAgoString)
+    .lte("booking_date", today);
+
+  if (popularBookingsError) {
+    throw popularBookingsError;
+  }
+
+  const { data: noShowBookings, error: noShowBookingsError } = await supabase
+    .from("bookings")
+    .select("id")
+    .eq("status", "confirmada")
+    .gte("booking_date", thirtyDaysAgoString)
+    .lt("booking_date", today);
+
+  if (noShowBookingsError) {
+    throw noShowBookingsError;
+  }
+
+  const bookingsByClass = (todayBookings ?? []).reduce<Record<string, number>>((accumulator, booking) => {
+    const className = (booking.classes as { name?: string } | null)?.name ?? "Sin clase";
+    accumulator[className] = (accumulator[className] ?? 0) + 1;
+    return accumulator;
+  }, {});
+
+  const mostPopularClass = (popularBookings ?? []).reduce<Record<string, number>>((accumulator, booking) => {
+    const className = (booking.classes as { name?: string } | null)?.name ?? "Sin clase";
+    accumulator[className] = (accumulator[className] ?? 0) + 1;
+    return accumulator;
+  }, {});
+
+  const popularClassEntry = Object.entries(mostPopularClass).sort((left, right) => right[1] - left[1])[0];
+  const classSummaryEntries = Object.entries(bookingsByClass);
 
   return (
     <main className="px-4 py-8">
       <div className="mx-auto max-w-6xl rounded-[2px] border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6">
-        <h1 className="text-2xl font-[family-name:var(--font-poppins)] uppercase tracking-[0.16em] text-[var(--text-primary)]">
-          Administración de reservas
-        </h1>
+        <AdminPanelNav />
 
-        <form method="get" className="mt-6 grid gap-4 md:grid-cols-3">
-          <div>
-            <label htmlFor="date" className="mb-2 block text-sm text-[var(--text-secondary)]">
-              Filtrar por fecha
-            </label>
-            <input
-              id="date"
-              name="date"
-              type="date"
-              defaultValue={selectedDate}
-              className="w-full rounded-[2px] px-3 py-2"
-            />
+        <div className="mt-6">
+          <h1 className="text-2xl font-[family-name:var(--font-poppins)] uppercase tracking-[0.16em] text-[var(--text-primary)]">
+            Dashboard del panel
+          </h1>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            Resumen operativo del club y del estado de reservas.
+          </p>
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-[2px] border border-[var(--border)] bg-[var(--background)] p-4">
+            <p className="text-xs uppercase tracking-[0.12em] text-[var(--text-secondary)]">Reservas confirmadas hoy</p>
+            <p className="mt-2 text-2xl font-[family-name:var(--font-poppins)] text-[var(--text-primary)]">{Object.values(bookingsByClass).reduce((sum, value) => sum + value, 0)}</p>
+            <div className="mt-3 space-y-1 text-sm text-[var(--text-secondary)]">
+              {classSummaryEntries.length === 0 ? (
+                <p>No hay reservas confirmadas hoy.</p>
+              ) : (
+                classSummaryEntries.map(([className, count]) => (
+                  <p key={className}>
+                    {className}: {count}
+                  </p>
+                ))
+              )}
+            </div>
           </div>
 
-          <div>
-            <label htmlFor="status" className="mb-2 block text-sm text-[var(--text-secondary)]">
-              Filtrar por estado
-            </label>
-            <select
-              id="status"
-              name="status"
-              defaultValue={selectedStatus}
-              className="w-full rounded-[2px] px-3 py-2"
-            >
-              <option value="todas">Todas</option>
-              <option value="confirmada">Confirmada</option>
-              <option value="cancelada">Cancelada</option>
-              <option value="asistio">Asistió</option>
-            </select>
+          <div className="rounded-[2px] border border-[var(--border)] bg-[var(--background)] p-4">
+            <p className="text-xs uppercase tracking-[0.12em] text-[var(--text-secondary)]">Socios activos</p>
+            <p className="mt-2 text-2xl font-[family-name:var(--font-poppins)] text-[var(--text-primary)]">{activeMembersCount ?? 0}</p>
           </div>
 
-          <div className="flex items-end">
-            <button
-              type="submit"
-              className="w-full bg-[var(--accent)] px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-[#c5312b]"
-            >
-              Aplicar filtros
-            </button>
+          <div className="rounded-[2px] border border-[var(--border)] bg-[var(--background)] p-4">
+            <p className="text-xs uppercase tracking-[0.12em] text-[var(--text-secondary)]">Clase más popular</p>
+            <p className="mt-2 text-2xl font-[family-name:var(--font-poppins)] text-[var(--text-primary)]">
+              {popularClassEntry ? popularClassEntry[0] : "-"}
+            </p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              {popularClassEntry ? `${popularClassEntry[1]} reservas` : "Sin datos"}
+            </p>
           </div>
-        </form>
 
-        <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full border-separate border-spacing-0 text-left">
-            <thead>
-              <tr className="bg-[var(--background)] text-[var(--text-primary)]">
-                <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
-                  Fecha
-                </th>
-                <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
-                  Clase
-                </th>
-                <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
-                  Horario
-                </th>
-                <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
-                  Socio
-                </th>
-                <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
-                  Teléfono
-                </th>
-                <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
-                  Estado
-                </th>
-                <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
-                  Acción
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBookings.map((booking) => {
-                const member = booking.members as { full_name?: string; phone?: string } | null;
-                const classInfo = booking.classes as {
-                  name?: string;
-                  day_of_week?: number;
-                  start_time?: string;
-                } | null;
-
-                const dayText = classInfo?.day_of_week != null ? dayLabels[classInfo.day_of_week] : "-";
-
-                let statusClass = "border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs font-bold uppercase tracking-wide text-[var(--text-primary)]";
-                if (booking.status === "confirmada") {
-                  statusClass = "border border-[var(--accent)] bg-[rgba(239,62,54,0.12)] px-2 py-1 text-xs font-bold uppercase tracking-wide text-[var(--accent)]";
-                } else if (booking.status === "cancelada") {
-                  statusClass = "border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs font-bold uppercase tracking-wide text-[var(--text-secondary)]";
-                } else if (booking.status === "asistio") {
-                  statusClass = "border border-[var(--success)] bg-[rgba(76,175,80,0.12)] px-2 py-1 text-xs font-bold uppercase tracking-wide text-[var(--success)]";
-                }
-
-                return (
-                  <tr key={booking.id} className="align-top">
-                    <td className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-jetbrains-mono)] text-sm text-[var(--text-primary)]">
-                      {booking.booking_date}
-                    </td>
-                    <td className="border-b border-[var(--border)] px-3 py-3 text-sm text-[var(--text-primary)]">
-                      {classInfo?.name ?? "-"}
-                    </td>
-                    <td className="border-b border-[var(--border)] px-3 py-3 text-sm text-[var(--text-secondary)]">
-                      {dayText} · {classInfo?.start_time ?? "-"}
-                    </td>
-                    <td className="border-b border-[var(--border)] px-3 py-3 text-sm text-[var(--text-primary)]">
-                      {member?.full_name ?? "-"}
-                    </td>
-                    <td className="border-b border-[var(--border)] px-3 py-3 text-sm text-[var(--text-secondary)]">
-                      {member?.phone ?? "-"}
-                    </td>
-                    <td className="border-b border-[var(--border)] px-3 py-3">
-                      <span className={statusClass}>{booking.status}</span>
-                    </td>
-                    <td className="border-b border-[var(--border)] px-3 py-3">
-                      <BookingStatusActions bookingId={booking.id} currentStatus={booking.status} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="rounded-[2px] border border-[var(--border)] bg-[var(--background)] p-4">
+            <p className="text-xs uppercase tracking-[0.12em] text-[var(--text-secondary)]">Inasistencias últimos 30 días</p>
+            <p className="mt-2 text-2xl font-[family-name:var(--font-poppins)] text-[var(--text-primary)]">{noShowBookings?.length ?? 0}</p>
+          </div>
         </div>
       </div>
     </main>

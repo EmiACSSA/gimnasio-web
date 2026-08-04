@@ -1,18 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { translateAuthError } from "@/lib/auth-errors";
 
 const supabase = createClient();
 
-export default function LoginPage() {
-  const router = useRouter();
+export default function RecoverPasswordPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -21,16 +17,15 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const redirectTo = `${window.location.origin}/actualizar-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
     });
 
     if (error) {
       setMessage(translateAuthError(error.message));
     } else {
-      router.push("/clases");
-      setMessage("Sesión iniciada correctamente.");
+      setMessage("Si el correo está registrado, te enviamos un link para restablecer tu contraseña.");
     }
 
     setIsSubmitting(false);
@@ -39,18 +34,8 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-[calc(100vh-72px)] items-center justify-center px-4 py-8">
       <div className="w-full max-w-[420px] rounded-[2px] border border-[var(--border)] bg-[var(--surface)] p-6">
-        <div className="mb-6 flex justify-center">
-          <Image
-            src="/logo.png"
-            alt="Next Level - Centro de Entrenamiento"
-            width={180}
-            height={48}
-            className="h-10 w-auto"
-          />
-        </div>
-
         <h1 className="mb-6 text-center text-2xl font-[family-name:var(--font-poppins)] uppercase tracking-[0.16em] text-[var(--text-primary)]">
-          Iniciar sesión
+          Recuperar contraseña
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -68,32 +53,18 @@ export default function LoginPage() {
             />
           </div>
 
-          <div>
-            <label htmlFor="password" className="mb-2 block text-sm text-[var(--text-secondary)]">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              className="w-full rounded-[2px] px-3 py-2"
-            />
-          </div>
-
           <button
             type="submit"
             disabled={isSubmitting}
             className="w-full bg-[var(--accent)] px-4 py-3 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-[#c5312b]"
           >
-            {isSubmitting ? "Ingresando..." : "Ingresar"}
+            {isSubmitting ? "Enviando..." : "Enviar enlace"}
           </button>
         </form>
 
-        <div className="mt-4 text-center">
-          <Link href="/recuperar-password" className="text-sm text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]">
-            ¿Olvidaste tu contraseña?
+        <div className="mt-4 text-sm text-[var(--text-secondary)]">
+          <Link href="/login" className="transition hover:text-[var(--text-primary)]">
+            Volver al login
           </Link>
         </div>
 

@@ -150,6 +150,54 @@ export async function deleteClassAction(formData: FormData) {
   redirect("/admin/clases?message=Clase%20eliminada");
 }
 
+export async function createClassExceptionAction(formData: FormData) {
+  "use server";
+
+  const supabase = await requireAdminSession();
+  const classId = Number(formData.get("class_id"));
+  const exceptionDate = String(formData.get("exception_date") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  if (!Number.isInteger(classId) || !/^\d{4}-\d{2}-\d{2}$/.test(exceptionDate)) {
+    redirect("/admin/clases?error=Datos%20inv%C3%A1lidos%20para%20la%20excepci%C3%B3n");
+  }
+
+  const { error } = await supabase.from("class_exceptions").insert([
+    {
+      class_id: classId,
+      exception_date: exceptionDate,
+      reason: reason || null,
+    },
+  ]);
+
+  if (error) {
+    redirect("/admin/clases?error=No%20se%20pudo%20crear%20la%20excepci%C3%B3n");
+  }
+
+  revalidatePath("/admin/clases");
+  redirect("/admin/clases?message=Excepci%C3%B3n%20creada");
+}
+
+export async function deleteClassExceptionAction(formData: FormData) {
+  "use server";
+
+  const supabase = await requireAdminSession();
+  const id = String(formData.get("id") ?? "");
+
+  if (!id) {
+    redirect("/admin/clases?error=ID%20inv%C3%A1lido");
+  }
+
+  const { error } = await supabase.from("class_exceptions").delete().eq("id", id);
+
+  if (error) {
+    redirect("/admin/clases?error=No%20se%20pudo%20eliminar%20la%20excepci%C3%B3n");
+  }
+
+  revalidatePath("/admin/clases");
+  redirect("/admin/clases?message=Excepci%C3%B3n%20eliminada");
+}
+
 type AdminClassesPageProps = {
   searchParams?: Promise<{
     editId?: string;
@@ -172,14 +220,19 @@ export default async function AdminClassesPage({ searchParams }: AdminClassesPag
     .order("day_of_week", { ascending: true })
     .order("start_time", { ascending: true });
 
-  if (classesError) {
+  const { data: classExceptions, error: classExceptionsError } = await supabase
+    .from("class_exceptions")
+    .select("id, class_id, exception_date, reason, classes(name)")
+    .order("exception_date", { ascending: true });
+
+  if (classesError || classExceptionsError) {
     return (
       <main className="px-4 py-8">
         <div className="mx-auto max-w-5xl rounded-[2px] border border-[var(--border)] bg-[var(--surface)] p-6">
           <h1 className="text-2xl font-[family-name:var(--font-poppins)] uppercase tracking-[0.16em] text-[var(--text-primary)]">
             Gestión de clases
           </h1>
-          <p className="mt-3 text-[var(--text-secondary)]">Error al cargar las clases: {classesError.message}</p>
+          <p className="mt-3 text-[var(--text-secondary)]">Error al cargar las clases: {classesError?.message ?? classExceptionsError?.message ?? "No se pudo cargar el listado."}</p>
         </div>
       </main>
     );
@@ -304,6 +357,100 @@ export default async function AdminClassesPage({ searchParams }: AdminClassesPag
             </button>
           </div>
         </form>
+
+        <div className="mb-8 rounded-[2px] border border-[var(--border)] bg-[var(--background)] p-4">
+          <h2 className="text-lg font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em] text-[var(--text-primary)]">
+            Excepciones de clase
+          </h2>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            Agregá una fecha puntual donde una clase no se dicta.
+          </p>
+
+          <form action={createClassExceptionAction} className="mt-4 grid gap-4 md:grid-cols-4">
+            <div>
+              <label htmlFor="class_id" className="mb-2 block text-sm text-[var(--text-secondary)]">
+                Clase
+              </label>
+              <select id="class_id" name="class_id" className="w-full rounded-[2px] px-3 py-2">
+                {(classes ?? []).map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="exception_date" className="mb-2 block text-sm text-[var(--text-secondary)]">
+                Fecha
+              </label>
+              <input id="exception_date" name="exception_date" type="date" required className="w-full rounded-[2px] px-3 py-2" />
+            </div>
+
+            <div>
+              <label htmlFor="reason" className="mb-2 block text-sm text-[var(--text-secondary)]">
+                Motivo
+              </label>
+              <input id="reason" name="reason" type="text" placeholder="Feriado, profesor ausente..." className="w-full rounded-[2px] px-3 py-2" />
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="submit"
+                className="w-full bg-[var(--accent)] px-4 py-3 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-[#c5312b]"
+              >
+                Agregar excepción
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6 overflow-x-auto">
+            <table className="min-w-full border-separate border-spacing-0 text-left">
+              <thead>
+                <tr className="bg-[var(--background)] text-[var(--text-primary)]">
+                  <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
+                    Clase
+                  </th>
+                  <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
+                    Fecha
+                  </th>
+                  <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
+                    Motivo
+                  </th>
+                  <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
+                    Acción
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(classExceptions ?? []).map((item) => (
+                  <tr key={item.id} className="align-top">
+                    <td className="border-b border-[var(--border)] px-3 py-3 text-sm text-[var(--text-primary)]">
+                      {(item.classes as { name?: string } | null)?.name ?? "-"}
+                    </td>
+                    <td className="border-b border-[var(--border)] px-3 py-3 text-sm text-[var(--text-secondary)]">
+                      {item.exception_date}
+                    </td>
+                    <td className="border-b border-[var(--border)] px-3 py-3 text-sm text-[var(--text-secondary)]">
+                      {item.reason ?? "-"}
+                    </td>
+                    <td className="border-b border-[var(--border)] px-3 py-3">
+                      <form action={deleteClassExceptionAction}>
+                        <input type="hidden" name="id" value={item.id} />
+                        <button
+                          type="submit"
+                          className="border border-[var(--border)] px-3 py-1 text-xs font-bold uppercase tracking-wide text-[var(--text-primary)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                        >
+                          Eliminar
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full border-separate border-spacing-0 text-left">
