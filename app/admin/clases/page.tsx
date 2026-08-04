@@ -2,6 +2,8 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import ClassExceptionManager from "@/components/ClassExceptionManager";
+import ClassDeleteButton from "@/components/ClassDeleteButton";
 
 const dayLabels = [
   "Domingo",
@@ -358,99 +360,18 @@ export default async function AdminClassesPage({ searchParams }: AdminClassesPag
           </div>
         </form>
 
-        <div className="mb-8 rounded-[2px] border border-[var(--border)] bg-[var(--background)] p-4">
-          <h2 className="text-lg font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em] text-[var(--text-primary)]">
-            Excepciones de clase
-          </h2>
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            Agregá una fecha puntual donde una clase no se dicta.
-          </p>
-
-          <form action={createClassExceptionAction} className="mt-4 grid gap-4 md:grid-cols-4">
-            <div>
-              <label htmlFor="class_id" className="mb-2 block text-sm text-[var(--text-secondary)]">
-                Clase
-              </label>
-              <select id="class_id" name="class_id" className="w-full rounded-[2px] px-3 py-2">
-                {(classes ?? []).map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="exception_date" className="mb-2 block text-sm text-[var(--text-secondary)]">
-                Fecha
-              </label>
-              <input id="exception_date" name="exception_date" type="date" required className="w-full rounded-[2px] px-3 py-2" />
-            </div>
-
-            <div>
-              <label htmlFor="reason" className="mb-2 block text-sm text-[var(--text-secondary)]">
-                Motivo
-              </label>
-              <input id="reason" name="reason" type="text" placeholder="Feriado, profesor ausente..." className="w-full rounded-[2px] px-3 py-2" />
-            </div>
-
-            <div className="flex items-end">
-              <button
-                type="submit"
-                className="w-full bg-[var(--accent)] px-4 py-3 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-[#c5312b]"
-              >
-                Agregar excepción
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-6 overflow-x-auto">
-            <table className="min-w-full border-separate border-spacing-0 text-left">
-              <thead>
-                <tr className="bg-[var(--background)] text-[var(--text-primary)]">
-                  <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
-                    Clase
-                  </th>
-                  <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
-                    Fecha
-                  </th>
-                  <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
-                    Motivo
-                  </th>
-                  <th className="border-b border-[var(--border)] px-3 py-3 font-[family-name:var(--font-poppins)] uppercase tracking-[0.12em]">
-                    Acción
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {(classExceptions ?? []).map((item) => (
-                  <tr key={item.id} className="align-top">
-                    <td className="border-b border-[var(--border)] px-3 py-3 text-sm text-[var(--text-primary)]">
-                      {(item.classes as { name?: string } | null)?.name ?? "-"}
-                    </td>
-                    <td className="border-b border-[var(--border)] px-3 py-3 text-sm text-[var(--text-secondary)]">
-                      {item.exception_date}
-                    </td>
-                    <td className="border-b border-[var(--border)] px-3 py-3 text-sm text-[var(--text-secondary)]">
-                      {item.reason ?? "-"}
-                    </td>
-                    <td className="border-b border-[var(--border)] px-3 py-3">
-                      <form action={deleteClassExceptionAction}>
-                        <input type="hidden" name="id" value={item.id} />
-                        <button
-                          type="submit"
-                          className="border border-[var(--border)] px-3 py-1 text-xs font-bold uppercase tracking-wide text-[var(--text-primary)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                        >
-                          Eliminar
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <ClassExceptionManager
+          classes={(classes ?? []).map((item) => ({ id: item.id, name: item.name }))}
+          existingExceptions={(classExceptions ?? []).map((item) => ({
+            id: item.id,
+            class_id: item.class_id,
+            exception_date: item.exception_date,
+            reason: item.reason,
+            classes: item.classes as { name?: string } | null,
+          }))}
+          createAction={createClassExceptionAction}
+          deleteAction={deleteClassExceptionAction}
+        />
 
         <div className="overflow-x-auto">
           <table className="min-w-full border-separate border-spacing-0 text-left">
@@ -502,21 +423,7 @@ export default async function AdminClassesPage({ searchParams }: AdminClassesPag
                       >
                         Editar
                       </Link>
-                      <form action={deleteClassAction}>
-                        <input type="hidden" name="id" value={item.id} />
-                        <button
-                          type="submit"
-                          onClick={(event) => {
-                            const shouldDelete = window.confirm("¿Seguro que querés eliminar esta clase?");
-                            if (!shouldDelete) {
-                              event.preventDefault();
-                            }
-                          }}
-                          className="border border-[var(--border)] px-3 py-1 text-xs font-bold uppercase tracking-wide text-[var(--text-primary)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                        >
-                          Eliminar
-                        </button>
-                      </form>
+                      <ClassDeleteButton classId={item.id} deleteAction={deleteClassAction} />
                     </div>
                   </td>
                 </tr>
