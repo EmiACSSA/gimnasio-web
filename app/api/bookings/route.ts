@@ -198,13 +198,9 @@ export async function POST(request: Request) {
     );
   }
 
-  if (finalStatus === "lista_espera") {
-    // TODO: confirmar en booking-rules.ts que promoteWaitlistForClass espera un
-    // número acá (¿minutos desde medianoche?) y no un string tipo "19:00:00".
-    // El cast de abajo solo destraba el build, no valida el dato en runtime.
-    await promoteWaitlistForClass(supabase, classId, bookingDate, Number(classInfo.start_time));
+ if (finalStatus === "lista_espera") {
+    await promoteWaitlistForClass(supabase, classId, bookingDate, classInfo.start_time);
   }
-
   return NextResponse.json(
     {
       message:

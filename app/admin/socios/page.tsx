@@ -26,7 +26,7 @@ export default async function AdminSociosPage() {
 
   const { data: members, error: membersError } = await supabase
     .from("members")
-    .select("id, auth_id, full_name, email, phone, role, created_at")
+    .select("id, auth_id, full_name, email, phone, role, plan, acceso_funcional_gratis, created_at")
     .order("full_name", { ascending: true });
 
   if (membersError) {
@@ -50,9 +50,9 @@ export default async function AdminSociosPage() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const noShowCounts = (bookings ?? []).reduce<Record<number, number>>((accumulator, booking) => {
+  const noShowCounts = (bookings ?? []).reduce<Record<string, number>>((accumulator, booking) => {
     const bookingDate = booking.booking_date;
-    if (bookingDate < today && typeof booking.member_id === "number") {
+    if (bookingDate < today && typeof booking.member_id === "string") {
       accumulator[booking.member_id] = (accumulator[booking.member_id] ?? 0) + 1;
     }
     return accumulator;
@@ -73,7 +73,7 @@ export default async function AdminSociosPage() {
             Gestión de socios
           </h1>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            Buscá por nombre o email y modificá el rol de cada socio.
+            Buscá por nombre o email, y modificá el rol, plan y acceso a Funcional de cada socio.
           </p>
         </div>
 
