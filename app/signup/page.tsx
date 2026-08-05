@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { isValidEmail, isValidPhone, sanitizeFullName, translateAuthError } from "@/lib/auth-errors";
@@ -8,6 +9,7 @@ import { isValidEmail, isValidPhone, sanitizeFullName, translateAuthError } from
 const supabase = createClient();
 
 export default function SignupPage() {
+  const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -54,12 +56,17 @@ export default function SignupPage() {
 
     if (error) {
       setMessage(translateAuthError(error.message));
-    } else if (data.user?.identities?.length === 0) {
-      setMessage("Este usuario ya existe o no pudo confirmarse.");
-    } else {
-      setMessage("Registro enviado. Revisa tu correo para confirmar la cuenta.");
+      setIsSubmitting(false);
+      return;
     }
 
+    if (data.user?.identities?.length === 0) {
+      setMessage("Este usuario ya existe o no pudo confirmarse.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    router.push("/login");
     setIsSubmitting(false);
   }
 

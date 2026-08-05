@@ -5,7 +5,12 @@ import { createClient } from "@/lib/supabase/client";
 
 const supabase = createClient();
 
-export default function LogoutButton() {
+type LogoutButtonProps = {
+  className?: string;
+  label?: string;
+};
+
+export default function LogoutButton({ className, label = "Logout" }: LogoutButtonProps) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -18,9 +23,12 @@ export default function LogoutButton() {
     <button
       type="button"
       onClick={handleLogout}
-      className="rounded-[2px] border border-[var(--border)] bg-transparent px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-primary)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+      className={
+        className ??
+        "rounded-[2px] border border-[var(--border)] bg-transparent px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-primary)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+      }
     >
-      Logout
+      {label}
     </button>
   );
 }

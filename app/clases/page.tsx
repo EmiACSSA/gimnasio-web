@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getNextReservableDateForClass } from "@/lib/booking-rules";
 import ReserveClassButton from "@/components/ReserveClassButton";
 
 const dayLabels = [
@@ -12,16 +13,8 @@ const dayLabels = [
   "Sábado",
 ];
 
-function getNextDateForDay(dayOfWeek: number) {
-  const today = new Date();
-  const currentDay = today.getDay();
-  const nextDate = new Date(today);
-  nextDate.setHours(0, 0, 0, 0);
-
-  const offset = (dayOfWeek - currentDay + 7) % 7;
-  nextDate.setDate(today.getDate() + (offset === 0 ? 0 : offset));
-
-  return nextDate.toISOString().slice(0, 10);
+function getNextBookingDateForClass(classInfo: { day_of_week: number; start_time: string }) {
+  return getNextReservableDateForClass(classInfo.day_of_week, classInfo.start_time);
 }
 
 export default async function ClasesPage() {
@@ -64,7 +57,7 @@ export default async function ClasesPage() {
 
   const classesWithAvailability = await Promise.all(
     (classes ?? []).map(async (item) => {
-      const bookingDate = getNextDateForDay(item.day_of_week);
+      const bookingDate = getNextBookingDateForClass(item);
       const { count, error: bookingsError } = await supabase
         .from("bookings")
         .select("id", { count: "exact", head: true })

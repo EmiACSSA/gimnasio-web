@@ -66,16 +66,10 @@ export default function ReserveClassButton({
 
       {isOpen ? (
         <div className="mt-3 rounded-[2px] border border-[var(--border)] bg-[var(--background)] p-3">
-          <label htmlFor={`date-${classId}`} className="mb-2 block text-sm text-[var(--text-secondary)]">
-            Fecha
-          </label>
-          <input
-            id={`date-${classId}`}
-            type="date"
-            value={selectedDate}
-            onChange={(event) => setSelectedDate(event.target.value)}
-            className="w-full rounded-[2px] px-3 py-2"
-          />
+          <p className="mb-2 text-sm text-[var(--text-secondary)]">Fecha disponible</p>
+          <div className="w-full rounded-[2px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)]">
+            {selectedDate}
+          </div>
           <button
             type="button"
             onClick={handleReserve}

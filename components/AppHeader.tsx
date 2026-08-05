@@ -1,7 +1,5 @@
-import Image from "next/image";
-import Link from "next/link";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import LogoutButton from "@/components/LogoutButton";
+import AppHeaderNav from "@/components/AppHeaderNav";
 
 export default async function AppHeader() {
   const supabase = await createServerSupabaseClient();
@@ -21,34 +19,5 @@ export default async function AppHeader() {
     isAdmin = member?.role === "administrador";
   }
 
-  return (
-    <header className="border-b border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)]">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 gap-3">
-        <Link href="/" className="flex items-center">
-          <Image
-            src="/logo.png"
-            alt="Next Level - Centro de Entrenamiento"
-            width={140}
-            height={48}
-            className="h-10 w-auto"
-          />
-        </Link>
-
-        {user ? (
-          <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-[var(--text-secondary)]">
-            <Link href="/mis-reservas" className="transition hover:text-[var(--text-primary)]">
-              Mis reservas
-            </Link>
-            {isAdmin ? (
-              <Link href="/admin" className="transition hover:text-[var(--text-primary)]">
-                Admin
-              </Link>
-            ) : null}
-            <span className="font-[family-name:var(--font-sans)]">{user.email}</span>
-            <LogoutButton />
-          </div>
-        ) : null}
-      </div>
-    </header>
-  );
+  return <AppHeaderNav userEmail={user?.email ?? null} isAdmin={isAdmin} />;
 }

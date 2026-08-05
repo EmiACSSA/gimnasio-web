@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import AdminPanelNav from "@/components/AdminPanelNav";
 import ExportBookingsCsvButton from "@/components/ExportBookingsCsvButton";
@@ -24,6 +23,10 @@ type AdminReservasPageProps = {
 
 function getStatusClass(status: string) {
   if (status === "confirmada") {
+    return "border border-[var(--accent)] bg-[rgba(239,62,54,0.12)] px-2 py-1 text-xs font-bold uppercase tracking-wide text-[var(--accent)]";
+  }
+
+  if (status === "waitlist") {
     return "border border-[var(--accent)] bg-[rgba(239,62,54,0.12)] px-2 py-1 text-xs font-bold uppercase tracking-wide text-[var(--accent)]";
   }
 
@@ -160,6 +163,7 @@ export default async function AdminReservasPage({ searchParams }: AdminReservasP
             >
               <option value="todas">Todas</option>
               <option value="confirmada">Confirmada</option>
+              <option value="waitlist">En lista de espera</option>
               <option value="cancelada">Cancelada</option>
               <option value="asistio">Asistió</option>
             </select>

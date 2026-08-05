@@ -73,13 +73,25 @@ export default async function MisReservasPage() {
 
   const upcomingBookings = (bookings ?? []).filter((booking) => {
     const bookingDate = new Date(`${booking.booking_date}T00:00:00`);
-    return bookingDate >= today && booking.status === "confirmada";
+    return bookingDate >= today && (booking.status === "confirmada" || booking.status === "waitlist");
   });
 
   const historyBookings = (bookings ?? []).filter((booking) => {
     const bookingDate = new Date(`${booking.booking_date}T00:00:00`);
-    return bookingDate < today || booking.status !== "confirmada";
+    return bookingDate < today || (booking.status !== "confirmada" && booking.status !== "waitlist");
   });
+
+  function renderStatusLabel(status: string) {
+    if (status === "waitlist") {
+      return "En lista de espera";
+    }
+
+    if (status === "confirmada") {
+      return "Confirmada";
+    }
+
+    return status;
+  }
 
   function renderTable(rows: typeof bookings) {
     return (
@@ -126,12 +138,12 @@ export default async function MisReservasPage() {
                   {dayText} · {classInfo?.start_time ?? "-"}
                 </td>
                 <td className="border-b border-[var(--border)] px-3 py-3">
-                  <span className="border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs font-bold uppercase tracking-wide text-[var(--text-primary)]">
-                    {booking.status}
+                  <span className={`border px-2 py-1 text-xs font-bold uppercase tracking-wide ${booking.status === "waitlist" ? "border-[var(--accent)] bg-[rgba(239,62,54,0.12)] text-[var(--accent)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)]"}`}>
+                    {renderStatusLabel(booking.status)}
                   </span>
                 </td>
                 <td className="border-b border-[var(--border)] px-3 py-3">
-                  {isFuture && booking.status === "confirmada" ? (
+                  {isFuture && (booking.status === "confirmada" || booking.status === "waitlist") ? (
                     <CancelBookingButton bookingId={booking.id} />
                   ) : null}
                 </td>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { enforceRateLimit, isValidBookingDate, isValidClassId } from "@/lib/booking-security";
+import { getNextReservableDateForClass, promoteWaitlistForClass } from "@/lib/booking-rules";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
 
   const { data: member, error: memberError } = await supabase
     .from("members")
-    .select("id")
+    .select("id, plan, acceso_funcional_gratis")
     .eq("auth_id", user.id)
     .maybeSingle();
 
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
 
   const { data: classInfo, error: classError } = await supabase
     .from("classes")
-    .select("capacity, day_of_week")
+    .select("capacity, day_of_week, name, start_time")
     .eq("id", classId)
     .maybeSingle();
 
@@ -93,6 +94,18 @@ export async function POST(request: Request) {
     );
   }
 
+  if (classInfo.name === "Funcional") {
+    const isFunctionalPlan = member.plan === "funcional";
+    const hasFunctionalAccess = member.acceso_funcional_gratis === true;
+
+    if (!isFunctionalPlan && !hasFunctionalAccess) {
+      return NextResponse.json(
+        { error: "No tenés acceso para reservar Funcional." },
+        { status: 403 },
+      );
+    }
+  }
+
   const bookingDateObject = new Date(`${bookingDate}T00:00:00`);
   const bookingDay = bookingDateObject.getDay();
 
@@ -113,6 +126,14 @@ export async function POST(request: Request) {
     );
   }
 
+  const nextReservableDate = getNextReservableDateForClass(classInfo.day_of_week, classInfo.start_time);
+  if (bookingDate !== nextReservableDate) {
+    return NextResponse.json(
+      { error: "Solo podés reservar la próxima ocurrencia de esta clase." },
+      { status: 400 },
+    );
+  }
+
   const { count, error: countError } = await supabase
     .from("bookings")
     .select("id", { count: "exact", head: true })
@@ -128,7 +149,15 @@ export async function POST(request: Request) {
     );
   }
 
-  if ((count ?? 0) >= classInfo.capacity) {
+  const shouldWaitlist =
+    classInfo.name === "Funcional" &&
+    member.plan !== "funcional" &&
+    member.acceso_funcional_gratis === true;
+
+  // Unificado con el resto de la tabla, que usa español ("confirmada", "cancelada", "asistio")
+  const finalStatus = shouldWaitlist ? "lista_espera" : "confirmada";
+
+  if (!shouldWaitlist && (count ?? 0) >= classInfo.capacity) {
     return NextResponse.json(
       {
         error: `La clase está llena para la fecha ${bookingDate}. No se puede confirmar la reserva.`,
@@ -142,11 +171,9 @@ export async function POST(request: Request) {
       member_id: member.id,
       class_id: classId,
       booking_date: bookingDate,
-      status: "confirmada",
+      status: finalStatus,
     },
   ]);
-
-  console.log("INSERT ERROR OBJECT:", insertError);
 
   if (insertError) {
     const isDuplicateBookingError =
@@ -159,7 +186,7 @@ export async function POST(request: Request) {
 
     if (isDuplicateBookingError) {
       return NextResponse.json(
-        { error: "Ya tiene una clase reservada en este día y horario" },
+        { error: "Ya tenés una clase reservada en este día y horario." },
         { status: 409 },
       );
     }
@@ -171,9 +198,19 @@ export async function POST(request: Request) {
     );
   }
 
+  if (finalStatus === "lista_espera") {
+    // TODO: confirmar en booking-rules.ts que promoteWaitlistForClass espera un
+    // número acá (¿minutos desde medianoche?) y no un string tipo "19:00:00".
+    // El cast de abajo solo destraba el build, no valida el dato en runtime.
+    await promoteWaitlistForClass(supabase, classId, bookingDate, Number(classInfo.start_time));
+  }
+
   return NextResponse.json(
     {
-      message: "Reserva confirmada correctamente.",
+      message:
+        finalStatus === "lista_espera"
+          ? "Tu reserva quedó en lista de espera."
+          : "Reserva confirmada correctamente.",
     },
     { status: 200 },
   );
